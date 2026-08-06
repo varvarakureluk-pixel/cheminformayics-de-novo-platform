@@ -20,7 +20,24 @@ st.set_page_config(
 
 st.title("🧪 Cheminformatics & QSPR Platform")
 st.caption("Веб-платформа для анализа молекул, QSPR-моделирования и de novo молекулярного дизайна")
+import streamlit as st
 
+# Переключатель языка в боковой панели
+lang = st.sidebar.radio("🌐 Language / Язык", ["English", "Русский"])
+
+# Словарь с текстами
+t = {
+    "title": "Cheminformatics & QSPR Platform" if lang == "English" else "Хемоинформатика и QSPR Платформа",
+    "desc": "Web platform for molecular analysis and de novo design" if lang == "English" else "Веб-платформа для анализа молекул и de novo молекулярного дизайна",
+    "sec1": "1. Basic Physico-Chemical Descriptors" if lang == "English" else "1. Базовые физико-химические дескрипторы",
+    "sec2": "2. 3D Conformation & Explainable AI" if lang == "English" else "2. 3D-Конформация и Explainable AI",
+    "mol_struct": "3D Molecular Structure" if lang == "English" else "3D Молекулярная структура"
+}
+
+# Использование в коде:
+st.title(t["title"])
+st.caption(t["desc"])
+st.header(t["sec1"])
 # ==============================================================================
 # УМНЫЙ ИНТЕРФЕЙС ВВОДА МОЛЕКУЛЫ (PUBCHEM API + SMILES)
 # ==============================================================================
@@ -158,7 +175,7 @@ with col_right:
     
     # 3. Получаем векторный SVG-код и сразу выводим в Streamlit
     svg_code = drawer.GetDrawingText()
-    st.image(svg_code, use_column_width=True)
+    st.html(f'<div style="display:flex; justify-content:center;">{svg_code}</div>')
 st.markdown("---")
 
 # ==============================================================================
