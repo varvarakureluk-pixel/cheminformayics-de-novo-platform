@@ -22,19 +22,22 @@ st.title("🧪 Cheminformatics & QSPR Platform")
 st.caption("Веб-платформа для анализа молекул, QSPR-моделирования и de novo молекулярного дизайна")
 import streamlit as st
 
-# Переключатель языка в боковой панели
+
 lang = st.sidebar.radio("🌐 Language / Язык", ["English", "Русский"])
 
-# Словарь с текстами
 t = {
     "title": "Cheminformatics & QSPR Platform" if lang == "English" else "Хемоинформатика и QSPR Платформа",
-    "desc": "Web platform for molecular analysis and de novo design" if lang == "English" else "Веб-платформа для анализа молекул и de novo молекулярного дизайна",
+    "desc": "Web platform for molecular analysis and de novo design" if lang == "English" else "Веб-платформа для анализа молекул, QSPR моделирования и de novo дизайна",
     "sec1": "1. Basic Physico-Chemical Descriptors" if lang == "English" else "1. Базовые физико-химические дескрипторы",
-    "sec2": "2. 3D Conformation & Explainable AI" if lang == "English" else "2. 3D-Конформация и Explainable AI",
-    "mol_struct": "3D Molecular Structure" if lang == "English" else "3D Молекулярная структура"
+    "sec2": "2. 3D Conformation & Explainable AI (LogP Atom Contributions)" if lang == "English" else "2. 3D-Конформация и Explainable AI (Вклады атомов в LogP)",
+    "mol_struct": "3D Molecular Structure" if lang == "English" else "3D Молекулярная структура",
+    "xai_map": "XAI: LogP Atom Contribution Map" if lang == "English" else "XAI: Карта вкладов атомов в LogP",
+    "sec3": "3. QSPR Modeling of Thermodynamic Properties" if lang == "English" else "3. QSPR Моделирование термодинамических свойств"
+    "sec4": "4. De Novo Molecular Generation & Filtering" if lang == "English" else "4. De Novo Генерация и фильтрация молекул",
+    "sec4_desc": "Generation of new molecular structures with predefined property constraints." if lang == "English" else "Генерация новых молекулярных структур с заданными ограничениями по свойствам."
 }
 
-# Использование в коде:
+# А выводите заголовки через t["..."]:
 st.title(t["title"])
 st.caption(t["desc"])
 st.header(t["sec1"])
@@ -96,7 +99,7 @@ st.sidebar.code(smiles_code, language="text")
 # ==============================================================================
 # ШАГ 1: БАЗОВЫЙ ХЕМОИНФОРМАЦИОННЫЙ КАЛЬКУЛЯТОР (RDKIT)
 # ==============================================================================
-st.header("1. Базовые физико-химические дескрипторы")
+st.header(t["sec1"])
 
 # Вычисляем дескрипторы RDKit
 mw = Descriptors.MolWt(current_mol) # Молекулярная масса (г/моль)
@@ -118,12 +121,12 @@ st.markdown("---")
 # ==============================================================================
 # ШАГ 2: 3D-ВИЗУАЛИЗАЦИЯ И ИНТЕРПРЕТИРУЕМОСТЬ ML (EXPLAINABLE AI)
 # ==============================================================================
-st.header("2. 3D-Конформация и Explainable AI (Вклады атомов в LogP)")
+st.header(t["sec2"])
 
 col_left, col_right = st.columns(2)
 
 with col_left:
-    st.subheader("3D Молекулярная структура")
+    st.subheader(t["mol_struct"])
     st.caption("Генерация силовым полем MMFF94 и интерактивный рендеринг")
     
     # Функция для генерации 3D-конформера
@@ -153,7 +156,7 @@ with col_left:
     components.html(viewer._make_html(), height=400)
 
 with col_right:
-    st.subheader("XAI: Карта вкладов атомов в LogP")
+    st.subheader(t["xai_map"])
     st.caption("Метод Криппена: 🔴 Красный = повышает липофильность, 🔵 Синий = понижает")
     
     # 1. Расчет атомных вкладов в LogP по алгоритму Криппена
@@ -181,7 +184,7 @@ st.markdown("---")
 # ==============================================================================
 # ШАГ 3: ПРОГНОЗИРОВАНИЕ СВОЙСТВ (QSPR - QUANTITATIVE STRUCTURE-PROPERTY)
 # ==============================================================================
-st.header("3. QSPR Моделирование термодинамических свойств")
+st.header(t["sec3"])
 st.write("Прогнозирование водной растворимости (LogS) и температуры плавления ($T_m$) на основе фингерпринтов Morgan.")
 
 # 1. Генерация молекулярных фингерпринтов Morgan (Circular Fingerprints / ECFP4)
@@ -239,8 +242,8 @@ st.markdown("---")
 # ==============================================================================
 # ШАГ 4: ЭЛЕМЕНТ ГЕНЕРАТИВНОГО ДИЗАЙНА (DE NOVO DESIGN)
 # ==============================================================================
-st.header("4. Generative Chemistry: De Novo Дизайн Модификаций")
-st.write("Автоматический синтез аналогов путем введения функциональных групп и отбора по критериям.")
+st.header(t["sec4"])
+st.write(t["sec4_desc"])
 
 # Боковая панель для ввода ограничений генерации
 st.sidebar.markdown("---")
