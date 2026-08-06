@@ -1,6 +1,7 @@
 import streamlit as st
 from rdkit import Chem
 from rdkit.Chem import Descriptors, AllChem, Draw, rdMolDescriptors
+from rdkit.Chem.Draw import rdMolDraw2D
 import pubchempy as pcp
 import py3Dmol
 from stmol import showmol
