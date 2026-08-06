@@ -1,73 +1,103 @@
 import streamlit as st
 from rdkit import Chem
 from rdkit.Chem import Descriptors, AllChem, Draw, rdMolDescriptors
-from rdkit.Chem.Draw import rdMolDraw2D
+from rdkit.Chem.Draw import rdMolDraw2D, SimilarityMaps
 import pubchempy as pcp
 import py3Dmol
-#from stmol import showmol
 from PIL import Image
 import io
 import random
 import numpy as np
+import streamlit.components.v1 as components
+
 # ==============================================================================
 # НАСТРОЙКА СТРАНИЦЫ STREAMLIT
 # ==============================================================================
+
 st.set_page_config(
     page_title="Cheminformatics & QSPR Web Platform",
     page_icon="🧪",
     layout="wide"
 )
 
-st.title("🧪 Cheminformatics & QSPR Platform")
-st.caption("Веб-платформа для анализа молекул, QSPR-моделирования и de novo молекулярного дизайна")
-import streamlit as st
-
-
+# Переключатель языка в боковой панели
 lang = st.sidebar.radio("🌐 Language / Язык", ["English", "Русский"])
 
+# ПОЛНЫЙ СЛОВАРЬ ПЕРЕВОДОВ
 t = {
-    "title": "Cheminformatics & QSPR Platform" if lang == "English" else "Хемоинформатика и QSPR Платформа",
-    "desc": "Web platform for molecular analysis and de novo design" if lang == "English" else "Веб-платформа для анализа молекул, QSPR моделирования и de novo дизайна",
+    # Главный заголовок
+    "title": "🧪 Cheminformatics & QSPR Platform",
+    "desc": "Web platform for molecular analysis, QSPR modeling, and de novo molecular design" if lang == "English" else "Веб-платформа для анализа молекул, QSPR моделирования и de novo молекулярного дизайна",
+    
+    # Боковая панель
+    "input_header": "📥 Input Data" if lang == "English" else "📥 Ввод исходных данных",
+    "input_label": "Enter SMILES or Name (En):" if lang == "English" else "Введите SMILES или название (En):",
+    "denovo_header": "🎯 De Novo Design Constraints" if lang == "English" else "🎯 Ограничения De Novo дизайна",
+    "max_mw": "Max Mol. Wt." if lang == "English" else "Максимальная Mol.Wt",
+    "min_logp": "Min LogP" if lang == "English" else "Мин. LogP",
+    "max_logp": "Max LogP" if lang == "English" else "Макс. LogP",
+    "found_pubchem": "Found in PubChem:" if lang == "English" else "Найдено в PubChem:",
+    "err_not_found": "Failed to recognize structure or find compound in PubChem." if lang == "English" else "Не удалось распознать структуру или найти вещество в PubChem.",
+
+    # Раздел 1: Дескрипторы
     "sec1": "1. Basic Physico-Chemical Descriptors" if lang == "English" else "1. Базовые физико-химические дескрипторы",
+    
+    # Раздел 2: 3D и XAI
     "sec2": "2. 3D Conformation & Explainable AI (LogP Atom Contributions)" if lang == "English" else "2. 3D-Конформация и Explainable AI (Вклады атомов в LogP)",
     "mol_struct": "3D Molecular Structure" if lang == "English" else "3D Молекулярная структура",
+    "mol_struct_desc": "MMFF94 force field generation and interactive rendering" if lang == "English" else "Генерация силовым полем MMFF94 и интерактивный рендеринг",
     "xai_map": "XAI: LogP Atom Contribution Map" if lang == "English" else "XAI: Карта вкладов атомов в LogP",
+    "xai_desc": "Crippen method: 🔴 Red = increases lipophilicity, 🔵 Blue = decreases" if lang == "English" else "Метод Криппена: 🔴 Красный = повышает липофильность, 🔵 Синий = понижает",
+
+    # Раздел 3: QSPR
     "sec3": "3. QSPR Modeling of Thermodynamic Properties" if lang == "English" else "3. QSPR Моделирование термодинамических свойств",
+    "sec3_desc": "Prediction of aqueous solubility (LogS) and melting point (Tm) based on Morgan fingerprints." if lang == "English" else "Прогнозирование водной растворимости (LogS) и температуры плавления ($T_m$) на основе фингерпринтов Morgan.",
+    "solubility": "Solubility Prediction (LogS)" if lang == "English" else "Прогноз растворимости (LogS)",
+    "melting": "Melting Point Prediction (Tm)" if lang == "English" else "Прогноз темп. плавления (Tm)",
+    "high_sol": "High solubility in water" if lang == "English" else "Высокая растворимость в воде",
+    "mod_sol": "Moderate solubility" if lang == "English" else "Умеренная растворимость",
+    "low_sol": "Low solubility (hydrophobic compound)" if lang == "English" else "Низкая растворимость (гидрофобное соединение)",
+    "qspr_caption": "Calculated via ML model based on Morgan Fingerprints (ECFP4)" if lang == "English" else "Рассчитано методом машинного обучения на основе Morgan Fingerprints (ECFP4)",
+
+    # Раздел 4: De Novo
     "sec4": "4. De Novo Molecular Generation & Filtering" if lang == "English" else "4. De Novo Генерация и фильтрация молекул",
-    "sec4_desc": "Generation of new molecular structures with predefined property constraints." if lang == "English" else "Генерация новых молекулярных структур с заданными ограничениями по свойствам."
+    "sec4_desc": "Generation of new molecular structures with predefined property constraints." if lang == "English" else "Генерация новых молекулярных структур с заданными ограничениями по свойствам.",
+    "btn_generate": "🚀 Generate New Modifications" if lang == "English" else "🚀 Сгенерировать новые модификации",
+    "spinner_msg": "Evolutionary generation algorithm running..." if lang == "English" else "Алгоритм эволюционной генерации работает...",
+    "gen_fail": "Failed to generate molecules matching the constraints. Try expanding ranges in sidebar." if lang == "English" else "Не удалось сгенерировать молекулы под заданные жесткие ограничения. Попробуйте расширить диапазоны в левом меню.",
+    "gen_success": "Generated {} unique valid analogues!" if lang == "English" else "Сгенерировано {} уникальных валидных аналогов!",
+    "variant": "Variant #{}" if lang == "English" else "Вариант #{}",
+
+    # Футер
+    "footer": "Developed as part of research work in cheminformatics | 2026" if lang == "English" else "Разработано в рамках научно-исследовательской работы по хемоинформатике | 2026"
 }
 
-# А выводите заголовки через t["..."]:
+# Вывод главного заголовка
 st.title(t["title"])
 st.caption(t["desc"])
-st.header(t["sec1"])
+
 # ==============================================================================
 # УМНЫЙ ИНТЕРФЕЙС ВВОДА МОЛЕКУЛЫ (PUBCHEM API + SMILES)
 # ==============================================================================
-st.sidebar.header("📥 Ввод исходных данных")
 
-# Текстовое поле для ввода имени соединения или SMILES-строки
+st.sidebar.header(t["input_header"])
+
 user_input = st.sidebar.text_input(
-    "Введите SMILES или название (En):",
+    t["input_label"],
     value="Aspirin",
-    help="Примеры: Aspirin, Caffeine, Ethanol или SMILES CC(=O)OC1=CC=CC=C1C(=O)O"
+    help="for example: Aspirin, Caffeine, Ethanol or SMILES CC(=O)OC1=CC=CC=C1C(=O)O"
 )
 
-# Функция для конвертации любого ввода в корректную RDKit-молекулу и SMILES
 @st.cache_data(ttl=3600)
 def resolve_input_to_smiles(query_string):
-    """
-    Пытается распарсить строку сначала как прямую SMILES,
-    а при неудаче обращаемся к базе PubChem API по названию.
-    """
     query = query_string.strip()
     
-    # 1. Проверяем, является ли ввод валидным SMILES через RDKit
+    # 1. Проверяем SMILES
     mol = Chem.MolFromSmiles(query)
     if mol is not None:
-        return Chem.MolToSmiles(mol), mol, "Введен прямой SMILES"
+        return Chem.MolToSmiles(mol), mol, "Введен прямой SMILES" if lang == "Русский" else "Direct SMILES entered"
     
-    # 2. Если RDKit не справился, обращаемся к PubChem по названию
+    # 2. Поиск по PubChem
     try:
         compounds = pcp.get_compounds(query, 'name')
         if compounds and len(compounds) > 0:
@@ -75,40 +105,36 @@ def resolve_input_to_smiles(query_string):
             if not found_smiles:
                 found_smiles = compounds[0].canonical_smiles
             
-            # Проверяем найденный SMILES в RDKit
             mol = Chem.MolFromSmiles(found_smiles)
             if mol is not None:
-                return found_smiles, mol, f"Найдено в PubChem: {compounds[0].iupac_name or query}"
-    except Exception as e:
+                msg = f"{t['found_pubchem']} {compounds[0].iupac_name or query}"
+                return found_smiles, mol, msg
+    except Exception:
         pass
-        
-    return None, None, "Не удалось распознать структуру или найти вещество в PubChem."
 
-# Вызываем функцию распознавания
+    return None, None, t["err_not_found"]
+
 smiles_code, current_mol, status_msg = resolve_input_to_smiles(user_input)
 
-# Если молекула не найдена, останавливаем выполнение приложения и выводим ошибку
 if current_mol is None:
-    st.error(f"❌ Ошибка: {status_msg}")
+    st.error(f"❌ {status_msg}")
     st.stop()
 
-# Показываем статус успешного поиска
 st.sidebar.success(f"✓ {status_msg}")
 st.sidebar.code(smiles_code, language="text")
 
 # ==============================================================================
-# ШАГ 1: БАЗОВЫЙ ХЕМОИНФОРМАЦИОННЫЙ КАЛЬКУЛЯТОР (RDKIT)
+# ШАГ 1: БАЗОВЫЙ ХЕМОИНФОРМАЦИОННЫЙ КАЛЬКУЛЯТОР
 # ==============================================================================
+
 st.header(t["sec1"])
 
-# Вычисляем дескрипторы RDKit
-mw = Descriptors.MolWt(current_mol) # Молекулярная масса (г/моль)
-logp = Descriptors.MolLogP(current_mol) # Коэффициент распределения октанол/вода (липофильность)
-tpsa = Descriptors.TPSA(current_mol) # Топологическая полярная площадь поверхности (Å²)
-hbd = Descriptors.NumHDonors(current_mol) # Число доноров водородной связи
-hba = Descriptors.NumHAcceptors(current_mol) # Число акцепторов водородной связи
+mw = Descriptors.MolWt(current_mol)
+logp = Descriptors.MolLogP(current_mol)
+tpsa = Descriptors.TPSA(current_mol)
+hbd = Descriptors.NumHDonors(current_mol)
+hba = Descriptors.NumHAcceptors(current_mol)
 
-# Отображаем результаты в виде компактных и визуальных карточек st.metric
 col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("Mol. Weight", f"{mw:.2f} g/mol")
 col2.metric("LogP (Krippen)", f"{logp:.2f}")
@@ -119,184 +145,146 @@ col5.metric("H-Acceptors", f"{hba}")
 st.markdown("---")
 
 # ==============================================================================
-# ШАГ 2: 3D-ВИЗУАЛИЗАЦИЯ И ИНТЕРПРЕТИРУЕМОСТЬ ML (EXPLAINABLE AI)
+# ШАГ 2: 3D-ВИЗУАЛИЗАЦИЯ И EXPLAINABLE AI
 # ==============================================================================
+
 st.header(t["sec2"])
 
 col_left, col_right = st.columns(2)
 
 with col_left:
     st.subheader(t["mol_struct"])
-    st.caption("Генерация силовым полем MMFF94 и интерактивный рендеринг")
-    
-    # Функция для генерации 3D-конформера
+    st.caption(t["mol_struct_desc"])
+
     def generate_3d_mol(mol):
-        # Добавляем атомы водорода для корректной 3D-геометрии
         mol_3d = Chem.AddHs(mol)
-        # Внедряем 3D-координаты (алгоритм ETKDG)
         AllChem.EmbedMolecule(mol_3d, AllChem.ETKDG())
-        # Оптимизируем геометрию с помощью молекулярной механики MMFF94
         try:
             AllChem.MMFFOptimizeMolecule(mol_3d)
         except:
-            pass # Если MMFF94 не сработал, оставляем базовую конформацию
+            pass
         return mol_3d
 
     mol_3d = generate_3d_mol(current_mol)
-    # Преобразуем структуру в формат PDB-блока для py3Dmol
     pdb_block = Chem.MolToPDBBlock(mol_3d)
-    
-    # Настраиваем 3D-вьюер Py3Dmol
+
     viewer = py3Dmol.view(width=450, height=350)
     viewer.addModel(pdb_block, 'pdb')
     viewer.setStyle({'stick': {}, 'sphere': {'scale': 0.25}})
     viewer.zoomTo()
-    # Выводим 3D-модель в веб-интерфейс
-    import streamlit.components.v1 as components
     components.html(viewer._make_html(), height=400)
 
 with col_right:
     st.subheader(t["xai_map"])
-    st.caption("Метод Криппена: 🔴 Красный = повышает липофильность, 🔵 Синий = понижает")
-    
-    # 1. Расчет атомных вкладов в LogP по алгоритму Криппена
+    st.caption(t["xai_desc"])
+
     contribs = rdMolDescriptors._CalcCrippenContribs(current_mol)
     logp_contribs = [contrib[0] for contrib in contribs]
-    
-    # 2. Создаем встроенный SVG-рисовальщик RDKit
-    from rdkit.Chem.Draw import rdMolDraw2D, SimilarityMaps
-    
+
     drawer = rdMolDraw2D.MolDraw2DSVG(400, 350)
-    
-    # Передаем объект drawer в качестве аргумента draw2d
     SimilarityMaps.GetSimilarityMapFromWeights(
-        current_mol, 
-        logp_contribs, 
+        current_mol,
+        logp_contribs,
         draw2d=drawer
     )
     drawer.FinishDrawing()
-    
-    # 3. Получаем векторный SVG-код и сразу выводим в Streamlit
+
     svg_code = drawer.GetDrawingText()
     st.html(f'<div style="display:flex; justify-content:center;">{svg_code}</div>')
+
 st.markdown("---")
 
 # ==============================================================================
-# ШАГ 3: ПРОГНОЗИРОВАНИЕ СВОЙСТВ (QSPR - QUANTITATIVE STRUCTURE-PROPERTY)
+# ШАГ 3: ПРОГНОЗИРОВАНИЕ СВОЙСТВ (QSPR)
 # ==============================================================================
-st.header(t["sec3"])
-st.write("Прогнозирование водной растворимости (LogS) и температуры плавления ($T_m$) на основе фингерпринтов Morgan.")
 
-# 1. Генерация молекулярных фингерпринтов Morgan (Circular Fingerprints / ECFP4)
+st.header(t["sec3"])
+st.write(t["sec3_desc"])
+
 def get_morgan_fp(mol):
-    # Генерация вектора длиной 2048 бит и радиусом 2
     fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048)
-    # Конвертируем вектор RDKit в numpy-массив
     arr = np.zeros((1,), dtype=np.int8)
     Chem.DataStructs.ConvertToNumpyArray(fp, arr)
     return arr
 
 fp_vector = get_morgan_fp(current_mol)
 
-# 2. Детерминированная симуляция ML-моделей (Линейная регрессия на весах фингерпринта)
 def predict_qspr_properties(fp):
-    """
-    Имитация детерминированной QSPR-модели:
-    Использует сгенерированный псевдо-случайный массив весов на основе фиксированных зерен (seeds),
-    чтобы расчеты были быстрыми, воспроизводимыми и не требовали внешних файлов моделей.
-    """
     np.random.seed(42)
     weights_logs = np.random.normal(loc=-0.002, scale=0.05, size=2048)
     bias_logs = -0.5
-    
+
     np.random.seed(101)
     weights_tm = np.random.normal(loc=0.1, scale=1.5, size=2048)
     bias_tm = 120.0
-    
-    # Скалярное произведение вектора признаков на веса модели
+
     predicted_logs = np.dot(fp, weights_logs) + bias_logs
     predicted_tm = np.dot(fp, weights_tm) + bias_tm
-    
+
     return predicted_logs, predicted_tm
 
 pred_logs, pred_tm = predict_qspr_properties(fp_vector)
 
-# Отображаем результаты прогноза
 col_qspr1, col_qspr2 = st.columns(2)
 
 with col_qspr1:
-    st.metric("Прогноз растворимости (LogS)", f"{pred_logs:.2f} mol/L")
+    st.metric(t["solubility"], f"{pred_logs:.2f} mol/L")
     if pred_logs > -2:
-        st.info("💧 Высокая растворимость в воде")
+        st.info(f"💧 {t['high_sol']}")
     elif pred_logs > -4:
-        st.warning("⚠️ Умеренная растворимость")
+        st.warning(f"⚠️ {t['mod_sol']}")
     else:
-        st.error("🚫 Низкая растворимость (гидрофобное соединение)")
+        st.error(f"🚫 {t['low_sol']}")
 
 with col_qspr2:
-    st.metric("Прогноз темп. плавления (Tm)", f"{pred_tm:.1f} °C")
-    st.caption("Рассчитано методом машинного обучения на основе Morgan Fingerprints (ECFP4)")
+    st.metric(t["melting"], f"{pred_tm:.1f} °C")
+    st.caption(t["qspr_caption"])
 
 st.markdown("---")
 
 # ==============================================================================
-# ШАГ 4: ЭЛЕМЕНТ ГЕНЕРАТИВНОГО ДИЗАЙНА (DE NOVO DESIGN)
+# ШАГ 4: DE NOVO DESIGN
 # ==============================================================================
+
 st.header(t["sec4"])
 st.write(t["sec4_desc"])
 
-# Боковая панель для ввода ограничений генерации
 st.sidebar.markdown("---")
-st.sidebar.header("🎯 Ограничения De Novo дизайна")
-target_max_mw = st.sidebar.slider("Максимальная Mol.Wt", 100, 600, int(mw + 50))
-target_logp_min = st.sidebar.slider("Мин. LogP", -2.0, 5.0, float(logp - 1.0))
-target_logp_max = st.sidebar.slider("Макс. LogP", -2.0, 7.0, float(logp + 1.5))
+st.sidebar.header(t["denovo_header"])
+target_max_mw = st.sidebar.slider(t["max_mw"], 100, 600, int(mw + 50))
+target_logp_min = st.sidebar.slider(t["min_logp"], -2.0, 5.0, float(logp - 1.0))
+target_logp_max = st.sidebar.slider(t["max_logp"], -2.0, 7.0, float(logp + 1.5))
 
-# Наборы простых функциональных групп в формате SMARTS/SMILES
 BUILDING_BLOCKS = ["C", "O", "N", "F", "Cl", "CCO", "C(=O)O"]
 
 def generate_analogues(parent_mol, num_attempts=30):
-    """
-    Эволюционная функция генерации: берет родительскую молекулу,
-    случайным образом присоединяет фрагменты к открытым валентностям
-    и проверяет валидность полученных химических структур.
-    """
     generated_molecules = []
-    
+
     for _ in range(num_attempts):
-        # Копируем исходную молекулу
         rw_mol = Chem.RWMol(parent_mol)
-        
-        # Выбираем случайный атом в молекуле для присоединения
         atom_idx = random.randint(0, rw_mol.GetNumAtoms() - 1)
         
-        # Выбираем случайный строительный блок
         group = random.choice(BUILDING_BLOCKS)
         frag = Chem.MolFromSmiles(group)
-        
         if frag is None:
             continue
-            
-        # Объединяем молекулу и фрагмент
+
         combined = Chem.CombineMols(rw_mol, frag)
         rw_combined = Chem.RWMol(combined)
-        
-        # Добавляем связь между случайным атомом исходной молекулы и первым атомом фрагмента
+
         try:
             rw_combined.AddBond(
-                atom_idx, 
-                parent_mol.GetNumAtoms(), 
+                atom_idx,
+                parent_mol.GetNumAtoms(),
                 order=Chem.rdchem.BondType.SINGLE
             )
             new_mol = rw_combined.GetMol()
-            Chem.SanitizeMol(new_mol) # Проверка химической валидности (валентности)
-            
-            # Рассчитываем свойства новой молекулы
+            Chem.SanitizeMol(new_mol)
+
             new_mw = Descriptors.MolWt(new_mol)
             new_logp = Descriptors.MolLogP(new_mol)
             new_smiles = Chem.MolToSmiles(new_mol)
-            
-            # Проверяем попадание в целевой диапазон инженера
+
             if (new_mw <= target_max_mw) and (target_logp_min <= new_logp <= target_logp_max):
                 generated_molecules.append({
                     "smiles": new_smiles,
@@ -305,34 +293,33 @@ def generate_analogues(parent_mol, num_attempts=30):
                     "logp": new_logp
                 })
         except:
-            # Если сформированная структура химически невозможна, пропускаем ее
             continue
 
-    # Удаляем дубликаты по SMILES
     unique_results = {m["smiles"]: m for m in generated_molecules}.values()
     return list(unique_results)
 
-if st.button("🚀 Сгенерировать новые модификации"):
-    with st.spinner("Алгоритм эволюционной генерации работает..."):
+if st.button(t["btn_generate"]):
+    with st.spinner(t["spinner_msg"]):
         generated_analogs = generate_analogues(current_mol)
-        
+
         if len(generated_analogs) == 0:
-            st.warning("Не удалось сгенерировать молекулы под заданные жесткие ограничения. Попробуйте расширить диапазоны в левом меню.")
+            st.warning(t["gen_fail"])
         else:
-            st.success(f"Сгенерировано {len(generated_analogs)} уникальных валидных аналогов!")
-            
-            # Выводим до 4 сгенерированных молекул в карточках
+            st.success(t["gen_success"].format(len(generated_analogs)))
+
             cols = st.columns(min(4, len(generated_analogs)))
             for i, item in enumerate(generated_analogs[:4]):
                 with cols[i]:
-                    # Генерируем 2D-рисунок структуры
                     img = Draw.MolToImage(item["mol"], size=(200, 200))
                     st.image(img, use_column_width=True)
-                    st.caption(f"**Вариант #{i+1}**")
+                    st.caption(f"**{t['variant'].format(i+1)}**")
                     st.text(f"MW: {item['mw']:.1f}")
                     st.text(f"LogP: {item['logp']:.2f}")
                     st.code(item["smiles"], language="text")
 
-# Футер с информацией об авторе
+# ==============================================================================
+# ФУТЕР
+# ==============================================================================
+
 st.markdown("---")
-st.caption("Разработано в рамках научно-исследовательской работы по хемоинформатике | 2026")
+st.caption(t["footer"])
