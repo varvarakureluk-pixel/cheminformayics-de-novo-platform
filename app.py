@@ -132,7 +132,8 @@ with col_left:
     viewer.setStyle({'stick': {}, 'sphere': {'scale': 0.25}})
     viewer.zoomTo()
     # Выводим 3D-модель в веб-интерфейс
-    showmol(viewer, height=350, width=450)
+    import streamlit.components.v1 as components
+    components.html(viewer._make_html(), height=400)
 
 with col_right:
     st.subheader("XAI: Карта вкладов атомов в LogP")
