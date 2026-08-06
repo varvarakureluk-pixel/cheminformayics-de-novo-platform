@@ -4,7 +4,7 @@ from rdkit.Chem import Descriptors, AllChem, Draw, rdMolDescriptors
 from rdkit.Chem.Draw import rdMolDraw2D
 import pubchempy as pcp
 import py3Dmol
-from stmol import showmol
+#from stmol import showmol
 from PIL import Image
 import io
 import random
