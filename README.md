@@ -31,7 +31,7 @@ A functional, interactive web application built with **Python** and **Streamlit*
 1. **Clone the repository:**
    ```bash
    git clone https://github.com
-   cd cheminformatics-de-novo-platform
+   cd cheminformayics-de-novo-platform
    ```
 
 2. **Install requirements:**
