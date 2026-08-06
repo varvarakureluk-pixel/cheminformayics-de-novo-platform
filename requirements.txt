@@ -2,7 +2,6 @@ streamlit
 rdkit
 pubchempy
 py3Dmol
-stmol
 pillow
 numpy
 matplotlib
