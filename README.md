@@ -2,7 +2,7 @@
 
 A functional, interactive web application built with **Python** and **Streamlit** designed to automate molecular properties analysis, predict thermodynamic parameters via QSPR, and perform fragment-based *de novo* molecular generation.
 
-🚀 **Live Demo:** [ВСТАВЬ СЮДА ССЫЛКУ НА СВОЙ STREAMLIT, КОГДА ЗАПУСТИШЬ]
+🚀 **Live Demo:** [Launch Cheminformatics Platform](https://cheminformayics-de-novo-platform.streamlit.app/)
 
 ---
 
