@@ -311,7 +311,7 @@ if st.button(t["btn_generate"]):
             for i, item in enumerate(generated_analogs[:4]):
                 with cols[i]:
                     img = Draw.MolToImage(item["mol"], size=(200, 200))
-                    st.image(img, use_column_width=True)
+                    st.image(img, use_container_width=True)
                     st.caption(f"**{t['variant'].format(i+1)}**")
                     st.text(f"MW: {item['mw']:.1f}")
                     st.text(f"LogP: {item['logp']:.2f}")
