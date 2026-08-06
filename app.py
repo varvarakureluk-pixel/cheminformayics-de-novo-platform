@@ -32,7 +32,7 @@ t = {
     "sec2": "2. 3D Conformation & Explainable AI (LogP Atom Contributions)" if lang == "English" else "2. 3D-Конформация и Explainable AI (Вклады атомов в LogP)",
     "mol_struct": "3D Molecular Structure" if lang == "English" else "3D Молекулярная структура",
     "xai_map": "XAI: LogP Atom Contribution Map" if lang == "English" else "XAI: Карта вкладов атомов в LogP",
-    "sec3": "3. QSPR Modeling of Thermodynamic Properties" if lang == "English" else "3. QSPR Моделирование термодинамических свойств"
+    "sec3": "3. QSPR Modeling of Thermodynamic Properties" if lang == "English" else "3. QSPR Моделирование термодинамических свойств",
     "sec4": "4. De Novo Molecular Generation & Filtering" if lang == "English" else "4. De Novo Генерация и фильтрация молекул",
     "sec4_desc": "Generation of new molecular structures with predefined property constraints." if lang == "English" else "Генерация новых молекулярных структур с заданными ограничениями по свойствам."
 }
