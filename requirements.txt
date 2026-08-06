@@ -1,10 +1,7 @@
 streamlit
 rdkit
 pubchempy
-stmol
 py3Dmol
 pillow
 numpy
 matplotlib
-ipywidgets
-ipython_genutils
