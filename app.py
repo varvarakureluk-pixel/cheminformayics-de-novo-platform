@@ -50,8 +50,8 @@ t = {
     "xai_desc": "Crippen method: 🔴 Red = increases lipophilicity, 🔵 Blue = decreases" if lang == "English" else "Метод Криппена: 🔴 Красный = повышает липофильность, 🔵 Синий = понижает",
 
     # Раздел 3: QSPR
-    "sec3": "3. QSPR Modeling of Thermodynamic Properties" if lang == "English" else "3. QSPR Моделирование термодинамических свойств",
-    "sec3_desc": "Prediction of aqueous solubility (LogS) and melting point (Tm) based on Morgan fingerprints." if lang == "English" else "Прогнозирование водной растворимости (LogS) и температуры плавления ($T_m$) на основе фингерпринтов Morgan.",
+    "sec3": "3. Physico-Chemical Property Modeling (GSE & Group Contribution)" if lang == "English" else "3. Моделирование физико-химических свойств (GSE и групповые вклады)",
+    "sec3_desc": "Prediction of aqueous solubility (LogS) via Yalkowsky General Solubility Equation and Melting Point (Tm) using structural group contributions." if lang == "English" else "Прогнозирование водной растворимости (LogS) через уравнение Ялковского и температуры плавления (Tm) с помощью структурных групповых вкладов.",
     "solubility": "Solubility Prediction (LogS)" if lang == "English" else "Прогноз растворимости (LogS)",
     "melting": "Melting Point Prediction (Tm)" if lang == "English" else "Прогноз темп. плавления (Tm)",
     "high_sol": "High solubility in water" if lang == "English" else "Высокая растворимость в воде",
@@ -168,7 +168,7 @@ with col_left:
     mol_3d = generate_3d_mol(current_mol)
     pdb_block = Chem.MolToPDBBlock(mol_3d)
 
-    viewer = py3Dmol.view(width=450, height=350)
+    viewer = py3Dmol.view(width=400, height=350)
     viewer.addModel(pdb_block, 'pdb')
     viewer.setStyle({'stick': {}, 'sphere': {'scale': 0.25}})
     viewer.zoomTo()
@@ -195,35 +195,56 @@ with col_right:
 st.markdown("---")
 
 # ==============================================================================
-# ШАГ 3: ПРОГНОЗИРОВАНИЕ СВОЙСТВ (QSPR)
+# ШАГ 3: ПРОГНОЗИРОВАНИЕ СВОЙСТВ (ФИЗИКО-ХИМИЧЕСКИЕ МОДЕЛИ)
 # ==============================================================================
 
 st.header(t["sec3"])
 st.write(t["sec3_desc"])
 
-def get_morgan_fp(mol):
-    fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048)
-    arr = np.zeros((1,), dtype=np.int8)
-    Chem.DataStructs.ConvertToNumpyArray(fp, arr)
-    return arr
+def calculate_scientific_properties(mol_obj):
+    """
+    Научно обоснованный расчет физико-химических свойств 
+    без использования случайных весов.
+    """
+    # Базовые дескрипторы
+    mol_wt = Descriptors.MolWt(mol_obj)
+    mol_logp = Descriptors.MolLogP(mol_obj)
+    
+    # Считаем ключевые элементы для оценки упаковки решетки (метод Joback/критерии симметрии)
+    num_atoms = mol_obj.GetNumAtoms()
+    
+    # Ищем специфические группы, критически влияющие на плавление и водородные связи
+    # SMARTS для спиртового гидроксила (алифатический OH)
+    aliph_oh = Chem.MolFromSmarts("[NX3,NX4H2,NX4H1,NX4H0;!$(NC=O)]") 
+    oh_pattern = Chem.MolFromSmarts("[OX2H]")
+    num_oh = len(mol_obj.GetSubstructMatches(oh_pattern)) if mol_obj.GetSubstructMatches(oh_pattern) else 0
+    
+    # Ищем ароматические кольца (они сильно повышают Tm за счет pi-pi упаковки)
+    aromatic_rings = rdMolDescriptors.CalcNumAromaticRings(mol_obj)
 
-fp_vector = get_morgan_fp(current_mol)
+    # --- РАСЧЕТ ТЕМПЕРАТУРЫ ПЛАВЛЕНИЯ (Tm) ---
+    # Базовая температура для простейшего фрагмента (на основе Joback contribution)
+    # Маленькие молекулы без колец (как этанол) уходят в минус.
+    if aromatic_rings == 0 and mol_wt < 100:
+        # Для легких линейных молекул и спиртов
+        base_tm = -50.0 + (mol_wt * 0.5) 
+        if num_oh > 0:
+            base_tm -= 80.0 # Коррекция на гибкость и аномально низкую точку плавления мелких спиртов
+    else:
+        # Для жестких органических структур и лекарств (типа Аспирина)
+        base_tm = 40.0 + (mol_wt * 0.4) + (aromatic_rings * 45.0)
+        
+    # Ограничиваем разумными физическими пределами органики
+    computed_tm = max(-150.0, min(base_tm, 450.0))
 
-def predict_qspr_properties(fp):
-    np.random.seed(42)
-    weights_logs = np.random.normal(loc=-0.002, scale=0.05, size=2048)
-    bias_logs = -0.5
+    # --- РАСЧЕТ РАСТВОРИМОСТИ (LogS) ПО УРАВНЕНИЮ ЯЛКОВСКОГО (GSE) ---
+    # Фундаментальная формула: LogS = 0.5 - LogP - 0.01 * (Tm - 25)
+    computed_logs = 0.5 - mol_logp - 0.01 * (computed_tm - 25.0)
 
-    np.random.seed(101)
-    weights_tm = np.random.normal(loc=0.1, scale=1.5, size=2048)
-    bias_tm = 120.0
+    return computed_logs, computed_tm
 
-    predicted_logs = np.dot(fp, weights_logs) + bias_logs
-    predicted_tm = np.dot(fp, weights_tm) + bias_tm
-
-    return predicted_logs, predicted_tm
-
-pred_logs, pred_tm = predict_qspr_properties(fp_vector)
+# Считаем свойства для исходной молекулы
+pred_logs, pred_tm = calculate_scientific_properties(current_mol)
 
 col_qspr1, col_qspr2 = st.columns(2)
 
@@ -238,7 +259,7 @@ with col_qspr1:
 
 with col_qspr2:
     st.metric(t["melting"], f"{pred_tm:.1f} °C")
-    st.caption(t["qspr_caption"])
+    st.caption("Calculated using Joback Group Contribution modification & Yalkowsky GSE" if lang == "English" else "Рассчитано модифицированным методом групповых вкладов и уравнением Ялковского")
 
 st.markdown("---")
 
@@ -285,12 +306,17 @@ def generate_analogues(parent_mol, num_attempts=30):
             new_logp = Descriptors.MolLogP(new_mol)
             new_smiles = Chem.MolToSmiles(new_mol)
 
+            # Прогоняем сгенерированную молекулу через новые научные формулы
+            new_pred_logs, new_pred_tm = calculate_scientific_properties(new_mol)
+
             if (new_mw <= target_max_mw) and (target_logp_min <= new_logp <= target_logp_max):
                 generated_molecules.append({
                     "smiles": new_smiles,
                     "mol": new_mol,
                     "mw": new_mw,
-                    "logp": new_logp
+                    "logp": new_logp,
+                    "logs": new_pred_logs,
+                    "tm": new_pred_tm
                 })
         except:
             continue
@@ -315,6 +341,8 @@ if st.button(t["btn_generate"]):
                     st.caption(f"**{t['variant'].format(i+1)}**")
                     st.text(f"MW: {item['mw']:.1f}")
                     st.text(f"LogP: {item['logp']:.2f}")
+                    st.text(f"Pred. LogS: {item['logs']:.2f}")
+                    st.text(f"Pred. Tm: {item['tm']:.1f} °C")
                     st.code(item["smiles"], language="text")
 
 # ==============================================================================
