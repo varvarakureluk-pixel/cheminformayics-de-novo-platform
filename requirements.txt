@@ -5,3 +5,6 @@ py3Dmol
 pillow
 numpy
 matplotlib
+pandas
+scikit-learn
+joblib
