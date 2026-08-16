@@ -4,3 +4,8 @@ pubchempy
 stmol
 py3Dmol
 Pillow
+matplotlib
+joblib
+numpy
+pandas
+scikit-learn
