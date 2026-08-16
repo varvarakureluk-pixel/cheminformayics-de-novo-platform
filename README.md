@@ -1,48 +1,176 @@
-# Web-Based Cheminformatics Platform for De Novo Molecular Design
+# Web-Based Cheminformatics & QSPR Platform for De Novo Molecular Design
 
-A functional, interactive web application built with **Python** and **Streamlit** designed to automate molecular properties analysis, predict thermodynamic parameters via QSPR, and perform fragment-based *de novo* molecular generation.
+A functional interactive web application developed with **Python** and **Streamlit** for molecular structure analysis, prediction of physicochemical properties using QSPR models, molecular visualization, and fragment-based *de novo* generation of structural analogues.
 
-🚀 **Live Demo:** [Launch Cheminformatics Platform](https://cheminformayics-de-novo-platform.streamlit.app/)
+🚀 **Live Demo:** [Launch Cheminformatics Platform](https://cheminformatic.streamlit.app/)
 
 ---
 
 ## 🔬 Core Features
 
-- **Automated Structural Retrieval:** Connects to the **PubChem REST API** to instantly fetch molecular structures using trivial names (e.g., *Caffeine*, *Aspirin*) and converts them into standardized SMILES strings.
-- **3D Conformation Generation:** Computes 3D coordinates using **RDKit** embedding and energy minimization algorithms, providing an interactive, rotatable 3D model in the browser.
-- **Explainable AI (XAI) Analytics:** Computes fundamental descriptors (Molecular Weight, Lipophilicity $\log P$, and Topological Polar Surface Area - $TPSA$) and visualizes atomic contributions using Crippen visualization.
-- **Predictive QSPR Modeling:** Estimates critical thermodynamic properties, including Melting Point ($T_m$), Boiling Point ($T_b$), and Aqueous Solubility ($\log S$) based on molecular graph vectorization.
-- **Fragment-Based De Novo Design:** Generates novel structural derivatives within user-defined target property windows (such as specific molecular mass ranges or Target Lipophilicity) via a radical substitution mutation algorithm.
+### Molecular Input and Structure Retrieval
+
+The application accepts either a **SMILES string** or the name of a chemical compound. Molecular names are resolved using **PubChem**, while several common compounds can also be recognized locally.
+
+If an entered name does not correspond exactly to a known compound, the application can suggest similar names instead of automatically selecting a potentially unrelated molecular structure.
+
+### Molecular Descriptor Calculation
+
+Molecular structures are processed using **RDKit**. The application calculates physicochemical and structural descriptors including molecular weight, TPSA, hydrogen-bond donors and acceptors, ring-related descriptors, and other molecular characteristics.
+
+Morgan fingerprints (**ECFP4**) are additionally used as molecular representations for the machine-learning models.
+
+### QSPR Property Prediction
+
+Three independent regression models are used to predict:
+
+**Lipophilicity (LogP)**
+**Aqueous solubility (LogS)**
+**Melting point (Tm)**
+
+The models are based on a combination of RDKit molecular descriptors and Morgan fingerprints and were trained using the **Extra Trees regression** algorithm.
+
+The LogS model was trained using experimental aqueous solubility data from the **ESOL dataset**.
+
+The LogP model was trained using experimental and adjusted lipophilicity measurements from the **SangsterLogP dataset**.
+
+The melting-point model was trained using the highly curated **Jean-Claude Bradley Double Plus Good Melting Point Dataset**.
 
 ---
 
-## 🛠️ Tech Stack & Libraries
+## 📊 Model Validation
 
-- **Frontend / UI:** [Streamlit](https://streamlit.io) — for reactive, web-oriented interface development.
-- **Cheminformatics Engine:** [RDKit](https://rdkit.org) — for parsing SMILES, 3D conformation generation, and molecular descriptor calculations.
-- **Data Integration:** [PubChemPy](https://readthedocs.io) — for semantic chemical search and database querying.
-- **3D Rendering:** `py3Dmol` & `stmol` — for interactive WebGL molecular visualization.
-- **Image Processing:** `Pillow (PIL)` — for 2D molecular structure rendering and mapping.
+Model performance was evaluated using both conventional random train/test splitting and **scaffold-based splitting**.
+
+Scaffold validation provides a more demanding estimate of model performance because molecules in the test set contain structural frameworks that differ from those represented in the training data.
+
+### LogS Model
+
+Random split:
+
+**R² = 0.874**
+
+Scaffold split:
+
+**R² = 0.867**
+
+For scaffold validation, the mean absolute error was approximately **0.54 log units**, with an RMSE of approximately **0.70 log units**.
+
+### LogP Model
+
+The final deployed LogP model uses **150 Extra Trees estimators**.
+
+Random split:
+
+**R² = 0.827**
+**MAE = 0.501**
+**RMSE = 0.700**
+
+Scaffold split:
+
+**R² = 0.651**
+**MAE = 0.695**
+**RMSE = 0.939**
+
+Reducing the model from 400 to 150 trees substantially decreased the model file size while producing only a minimal change in validation performance.
+
+### Melting Point Model
+
+Random split:
+
+**R² = 0.821**
+**MAE = 30.334 °C**
+**RMSE = 40.979 °C**
+
+Scaffold split:
+
+**R² = 0.784**
+**MAE = 35.247 °C**
+**RMSE = 49.650 °C**
+
+Melting point is particularly difficult to predict from two-dimensional molecular structure because crystal packing, polymorphism, intermolecular interactions, and other solid-state effects are not completely represented by conventional molecular descriptors and fingerprints.
 
 ---
 
-## 📦 How to Run Locally
+## 🧬 Molecular Visualization
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com
-   cd cheminformayics-de-novo-platform
-   ```
+Three-dimensional molecular conformations are generated using **RDKit** embedding and geometry optimization and displayed interactively in the browser using **py3Dmol**.
 
-2. **Install requirements:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+The application also generates a two-dimensional lipophilicity contribution map using **RDKit Crippen atomic contributions and Similarity Maps**.
 
-3. **Launch the Streamlit app:**
-   ```bash
-   streamlit run app.py
-   ```
+This visualization indicates which regions of the molecular structure contribute positively or negatively to lipophilicity according to the Crippen approach.
+
+The Crippen contribution map is an interpretable molecular visualization and is independent of the experimental LogP machine-learning model.
 
 ---
-*Developed as an undergraduate research project in Computational Chemistry & Informatics.*
+
+## 🧪 Fragment-Based De Novo Design
+
+The platform includes a simple *de novo* molecular design module for generating structural analogues of an input compound.
+
+Candidate structures are produced by attaching predefined molecular fragments to the parent structure. Generated molecules are chemically validated, duplicate structures are removed, and candidates are filtered according to user-defined physicochemical constraints such as molecular weight and lipophilicity.
+
+The remaining candidate molecules can then be evaluated using the trained QSPR models.
+
+This functionality provides a simple workflow for exploring how structural modifications may influence predicted molecular properties.
+
+---
+
+## 🛠️ Technologies
+
+The application is developed primarily in **Python**.
+
+**Streamlit** is used to build the interactive web interface.
+
+**RDKit** provides molecular parsing, descriptor calculation, molecular fingerprints, molecular drawing, conformer generation, and cheminformatics functionality.
+
+**scikit-learn** is used for the machine-learning regression models.
+
+**PubChemPy** provides access to PubChem for compound-name resolution.
+
+**py3Dmol** provides interactive WebGL-based three-dimensional molecular visualization.
+
+**pandas** and **NumPy** are used for data processing and numerical calculations.
+
+**joblib** is used for storing and loading the trained machine-learning models.
+
+---
+
+## 📦 Running the Application Locally
+
+Clone the repository:
+
+```bash
+git clone https://github.com/varvarakureluluk-pixel/cheminformayics-de-novo-platform.git
+cd cheminformayics-de-novo-platform
+```
+
+Install the required Python packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+Launch the application:
+
+```bash
+streamlit run app3_ml_v4.py
+```
+
+---
+
+## ⚠️ Limitations
+
+The platform is intended as a **research and educational cheminformatics tool** and should not be considered a replacement for experimental measurements.
+
+Prediction accuracy depends on how well a target compound is represented within the chemical space of the corresponding training dataset.
+
+Compounds that differ substantially from structures encountered during model training may have considerably higher prediction uncertainty.
+
+The reported R², MAE, and RMSE values therefore describe overall validation performance and should not be interpreted as guaranteed accuracy for every individual molecule.
+
+---
+
+## 🎓 Project Context
+
+This project was developed as part of undergraduate research in **cheminformatics, QSPR modeling, molecular property prediction, and computational molecular design**.
